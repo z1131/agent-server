@@ -18,6 +18,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 uuid = { workspace = true, features = ["v4"] }
 tempfile = { workspace = true }
+chrono = { workspace = true }
 
 [build-dependencies]
 tonic-build = "0.11"

@@ -2,95 +2,70 @@ syntax = "proto3";
 
 package codex.agent;
 
-service AdapterService {
-  // 执行一个 Codex 任务。
-  // 这是一个服务器流式 RPC，服务端会实时推送 Codex 的执行事件。
-  rpc Run(RunRequest) returns (stream RunResponse);
+// 统一的智能体服务接口
+service AgentService {
+  // 执行一个智能体任务 (如代码重构、搜索验证等)
+  // 这是一个服务器流式 RPC，实时返回任务执行过程中的每一个事件。
+  rpc RunTask(RunTaskRequest) returns (stream RunTaskResponse);
 }
 
-message RunRequest {
-  // 任务的唯一 ID，用于日志追踪和临时目录命名
+message RunTaskRequest {
+  // 任务请求唯一 ID (用于链路追踪)
   string request_id = 1;
 
-  // 核心指令 (Prompt)
-  string prompt = 2;
+  // 会话唯一 ID (UUID)
+  // 用于关联和恢复之前的会话状态
+  string session_id = 2;
 
-  // 核心会话配置
-  SessionConfig session_config = 3;
+  // 用户指令 (Prompt)
+  string prompt = 3;
+
+  // 会话配置 (严格对齐 Codex ConfigToml 内核)
+  SessionConfig session_config = 4;
 
   // 初始文件上下文
-  repeated File context_files = 4;
+  repeated File context_files = 5;
 
-  // 环境变量覆盖
-  // 用于传递 API Keys (如 OPENAI_API_KEY) 或其他配置
-  map<string, string> env_vars = 5;
+  // 环境变量覆盖 (用于传递敏感 Key)
+  map<string, string> env_vars = 6;
   
-  // 基础工作目录 (可选)
-  string base_dir = 6;
+  // 基础工作目录
+  string base_dir = 7;
+
+  // 历史会话数据 (Codex 原生 JSONL 格式)
+  // 如果非空，Adapter 会复活该会话并继续执行
+  bytes history_rollout = 8;
 }
 
 message SessionConfig {
-  // Provider identifier info.
-  ModelProviderInfo provider = 1;
-
-  // Model name (e.g. "gpt-4")
-  string model = 2;
-
-  // Reasoning configuration
-  optional string reasoning_effort = 3; // "low", "medium", "high"
-  
-  // 简化处理，因为 bool 不能表达 Option<ReasoningSummaryConfig> 的复杂性，
-  // 这里我们假设 true = default, false = disabled
-  bool enable_reasoning_summary = 4; 
-
-  // Instructions
+  string model = 1;
+  string model_provider = 2;
+  ModelProviderInfo provider_info = 3;
+  optional string instructions = 4;
   optional string developer_instructions = 5;
-  optional string user_instructions = 6;
-  optional string base_instructions = 7;
-  optional string compact_prompt = 8;
-
-  // Policies
-  ApprovalPolicy approval_policy = 9;
-  SandboxPolicy sandbox_policy = 10;
-  
-  // CWD (Client supplied working directory override)
-  string cwd = 11;
-  
-  // MCP Servers configuration
-  map<string, McpServerDef> mcp_servers = 12;
-}
-
-message McpServerDef {
-  // "stdio", "sse", "streamable_http" etc.
-  string server_type = 1; 
-  
-  // For stdio
-  string command = 2;
-  repeated string args = 3;
-  map<string, string> env = 4;
-  
-  // For http/sse
-  string url = 5;
+  ApprovalPolicy approval_policy = 6;
+  SandboxPolicy sandbox_policy = 7;
+  string cwd = 8;
+  map<string, McpServerDef> mcp_servers = 9;
 }
 
 message ModelProviderInfo {
   string name = 1;
   optional string base_url = 2;
   optional string env_key = 3;
-  optional string env_key_instructions = 4;
-  optional string experimental_bearer_token = 5;
-  
-  WireApi wire_api = 6;
-  
+  optional string experimental_bearer_token = 4;
+  WireApi wire_api = 5;
+  map<string, string> http_headers = 6;
   map<string, string> query_params = 7;
-  map<string, string> http_headers = 8;
-  map<string, string> env_http_headers = 9;
+  bool requires_openai_auth = 8;
+}
 
-  optional uint64 request_max_retries = 10;
-  optional uint64 stream_max_retries = 11;
-  optional uint64 stream_idle_timeout_ms = 12;
-  
-  bool requires_openai_auth = 13;
+message McpServerDef {
+  string server_type = 1; 
+  string command = 2;
+  repeated string args = 3;
+  map<string, string> env = 4;
+  string url = 5;
 }
 
 enum WireApi {
@@ -114,21 +89,22 @@ enum SandboxPolicy {
 }
 
 message File {
-  // 相对路径，例如 "src/main.rs"
   string path = 1;
-  // 文件内容
   bytes content = 2;
 }
 
-message RunResponse {
+message RunTaskResponse {
   oneof event {
-    // 原始的 Codex JSONL 事件
+    // 原始 Codex JSONL 事件
     string codex_event_json = 1;
 
-    // Adapter 自身的系统日志
+    // 系统日志 (仅包含关键状态变迁)
     string adapter_log = 2;
 
-    // 致命错误
+    // 错误信息
     string error = 3;
+
+    // 任务成功结束后的最新“灵魂”数据
+    bytes updated_rollout = 4;
   }
 }

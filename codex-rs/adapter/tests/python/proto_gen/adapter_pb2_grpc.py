@@ -25,8 +25,9 @@ if _version_not_supported:
     )
 
 
-class AdapterServiceStub(object):
-    """Missing associated documentation comment in .proto file."""
+class AgentServiceStub(object):
+    """统一的智能体服务接口
+    """
 
     def __init__(self, channel):
         """Constructor.
@@ -34,45 +35,47 @@ class AdapterServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.Run = channel.unary_stream(
-                '/codex.agent.AdapterService/Run',
-                request_serializer=adapter__pb2.RunRequest.SerializeToString,
-                response_deserializer=adapter__pb2.RunResponse.FromString,
+        self.RunTask = channel.unary_stream(
+                '/codex.agent.AgentService/RunTask',
+                request_serializer=adapter__pb2.RunTaskRequest.SerializeToString,
+                response_deserializer=adapter__pb2.RunTaskResponse.FromString,
                 _registered_method=True)
 
 
-class AdapterServiceServicer(object):
-    """Missing associated documentation comment in .proto file."""
+class AgentServiceServicer(object):
+    """统一的智能体服务接口
+    """
 
-    def Run(self, request, context):
-        """执行一个 Codex 任务。
-        这是一个服务器流式 RPC，服务端会实时推送 Codex 的执行事件。
+    def RunTask(self, request, context):
+        """执行一个智能体任务 (如代码重构、搜索验证等)
+        这是一个服务器流式 RPC，实时返回任务执行过程中的每一个事件。
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_AdapterServiceServicer_to_server(servicer, server):
+def add_AgentServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Run': grpc.unary_stream_rpc_method_handler(
-                    servicer.Run,
-                    request_deserializer=adapter__pb2.RunRequest.FromString,
-                    response_serializer=adapter__pb2.RunResponse.SerializeToString,
+            'RunTask': grpc.unary_stream_rpc_method_handler(
+                    servicer.RunTask,
+                    request_deserializer=adapter__pb2.RunTaskRequest.FromString,
+                    response_serializer=adapter__pb2.RunTaskResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'codex.agent.AdapterService', rpc_method_handlers)
+            'codex.agent.AgentService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('codex.agent.AdapterService', rpc_method_handlers)
+    server.add_registered_method_handlers('codex.agent.AgentService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class AdapterService(object):
-    """Missing associated documentation comment in .proto file."""
+class AgentService(object):
+    """统一的智能体服务接口
+    """
 
     @staticmethod
-    def Run(request,
+    def RunTask(request,
             target,
             options=(),
             channel_credentials=None,
@@ -85,9 +88,9 @@ class AdapterService(object):
         return grpc.experimental.unary_stream(
             request,
             target,
-            '/codex.agent.AdapterService/Run',
-            adapter__pb2.RunRequest.SerializeToString,
-            adapter__pb2.RunResponse.FromString,
+            '/codex.agent.AgentService/RunTask',
+            adapter__pb2.RunTaskRequest.SerializeToString,
+            adapter__pb2.RunTaskResponse.FromString,
             options,
             channel_credentials,
             insecure,
